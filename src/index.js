@@ -1,34 +1,60 @@
 import './css/styles.css';
-import pokemonCard from './fetchCountries';
+import fetchCountries from './fetchCountries';
+import { debounce } from 'debounce';
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
+const DEBOUNCE_DELAY = 300;
 
+const input = document.querySelector('#search-box');
 const list = document.querySelector('.country-list');
 
-// const DEBOUNCE_DELAY = 300;
+input.addEventListener('input', debounce(onInputClick, DEBOUNCE_DELAY));
 
-function fetchCountries(name) {
-  return fetch('https://pokeapi.co/api/v2/pokemon/2')
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(response.status);
-      }
-      return response.json();
+function onInputClick(event) {
+  const value = event.target.value.trim();
+
+  if (value === '') {
+    list.innerHTML = '';
+    return;
+  }
+
+  fetchCountries(value).then(data => {
+    if (!data) {
+      return;
+    }
+    if (data.length > 10) {
+      Notify.info('Too many matches found. Please enter a more specific name.');
+      return;
+    }
+
+    if (data.length > 1 && data.length < 10) {
+      createCard(data);
+      return;
+    }
+    renderCard(data);
+  });
+}
+
+function createCard(data) {
+  const markup = data
+    .map(({ name, flags }) => {
+      return `<li class="list-item">
+      <img class="list-img" src="${flags.svg}" alt="" />
+     <span class="list-name">${name.official}</span>
+      </li>`;
     })
-    .catch(error => console.log(error));
+    .join('');
+  list.innerHTML = markup;
 }
 
-function getEvents() {
-  fetchCountries().then(data => console.log(data));
-  renderEvents();
-}
+function renderCard(data) {
+  const { name, capital, population, flags, languages } = data[0];
+  const language = Object.values(languages).join(',');
+  const markup = `<li><img class="list-img" src="${flags.svg}" alt=""/>
+  <span class="list-text"><b>${name.common}</b></span>
+        <p class="title"><b>Capital: </b>${capital}</p>
+        <p class="title"><b>Population: </b>${population}</p>
+        <p class="title"><b>Languages: </b>${language}</p>
+       </li>`;
 
-getEvents();
-
-function renderEvents() {
-  const markup = `<li>
-    <img src="${sprites.front_default}" alt="${name}"/>
-    <p>Имя:${name}</p>
-    <p>Вес:${weight}</p>
-    <p>Рост:${height}</p>
-    </li>`;
   list.innerHTML = markup;
 }
